@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Experto Hídrico — CLIPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #0b0f14;
+  --surface:   #111820;
+  --surface2:  #182030;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.14);
+  --text:      #e8edf5;
+  --muted:     #6a7d96;
+  --blue:      #3b82f6;
+  --blue-dim:  rgba(59,130,246,0.12);
+  --teal:      #14b8a6;
+  --teal-dim:  rgba(20,184,166,0.12);
+  --red:       #ef4444;
+  --red-dim:   rgba(239,68,68,0.12);
+  --amber:     #f59e0b;
+  --amber-dim: rgba(245,158,11,0.12);
+  --green:     #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ── Background grid texture ──────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ── Layout ───────────────────────────────────────────── */
+.page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* ── Header ───────────────────────────────────────────── */
+header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding-bottom: 2rem; margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.logo { display: flex; align-items: center; gap: 14px; }
+.logo-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 24px rgba(59,130,246,0.35);
+}
+.logo-icon svg { width: 26px; height: 26px; color: #fff; }
+.logo-text h1 { font-family: var(--font-head); font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
+.logo-text p { font-size: 0.75rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; }
+.header-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  background: var(--blue-dim); border: 1px solid rgba(59,130,246,0.25);
+  font-size: 0.72rem; font-weight: 500; color: var(--blue);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+/* ── Two-column grid ──────────────────────────────────── */
+.main-grid { display: grid; grid-template-columns: 420px 1fr; gap: 1.5rem; align-items: start; }
+
+/* ── Panel / Card ─────────────────────────────────────── */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+}
+.panel-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.panel-header .ph-icon { color: var(--blue); font-size: 1.1rem; }
+.panel-header h2 { font-family: var(--font-head); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+.panel-body { padding: 1.25rem; }
+
+/* ── Form fields ──────────────────────────────────────── */
+.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label {
+  font-size: 0.72rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted);
+}
+.field input[type=number],
+.field select {
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); border-radius: 8px; padding: 9px 12px;
+  font-family: var(--font-body); font-size: 0.88rem;
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none; -webkit-appearance: none;
+  width: 100%;
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236a7d96' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  padding-right: 30px; cursor: pointer;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+/* ── Run button ───────────────────────────────────────── */
+.btn-run {
+  width: 100%; margin-top: 1rem; padding: 13px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+  border: none; border-radius: 10px; color: #fff;
+  font-family: var(--font-head); font-size: 0.95rem; font-weight: 700;
+  letter-spacing: 0.02em; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+}
+.btn-run:hover { opacity: 0.88; }
+.btn-run:active { transform: scale(0.98); }
+.btn-run:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn-run svg { width: 18px; height: 18px; }
+.spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Progress bar ─────────────────────────────────────── */
+.progress-wrap { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-top: 10px; opacity: 0; transition: opacity 0.2s; }
+.progress-wrap.active { opacity: 1; }
+.progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 2px; transition: width 0.5s ease; }
+
+/* ── Results ──────────────────────────────────────────── */
+.results-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 340px; gap: 12px; color: var(--muted);
+  text-align: center;
+}
+.results-placeholder svg { width: 42px; height: 42px; opacity: 0.25; }
+.results-placeholder p { font-size: 0.85rem; }
+
+.results-content { display: none; flex-direction: column; gap: 16px; }
+.results-content.visible { display: flex; }
+
+/* ── Layer tracker ────────────────────────────────────── */
+.layers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.layer {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 8px; text-align: center;
+  transition: all 0.3s ease;
+}
+.layer.done {
+  background: var(--teal-dim); border-color: rgba(20,184,166,0.35);
+}
+.layer-num { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); margin-bottom: 4px; }
+.layer.done .layer-num { color: var(--teal); }
+.layer-name { font-size: 0.7rem; font-weight: 500; color: var(--muted); }
+.layer.done .layer-name { color: #5eead4; }
+.layer-check { font-size: 0.8rem; color: var(--teal); display: none; }
+.layer.done .layer-check { display: block; }
+
+/* ── Inference rows ───────────────────────────────────── */
+.inf-table { display: flex; flex-direction: column; gap: 0; }
+.inf-row {
+  display: grid; grid-template-columns: 160px 1fr;
+  align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+}
+.inf-row:last-child { border-bottom: none; }
+.inf-key { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); }
+.inf-val { font-size: 0.82rem; font-weight: 500; }
+
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 600; font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+.b-critico  { background: var(--red-dim);   color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+.b-alto     { background: var(--amber-dim); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+.b-bajo     { background: var(--green-dim); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+.b-extrema  { background: var(--red-dim);   color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+.b-alta     { background: var(--amber-dim); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+.b-baja     { background: var(--green-dim); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+.b-inmediata{ background: var(--red-dim);   color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+.b-urgente  { background: var(--amber-dim); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+.b-programada{background: var(--green-dim); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+.b-default  { background: var(--surface2);  color: var(--muted); border: 1px solid var(--border); }
+
+/* ── Acción final card ────────────────────────────────── */
+.accion-card {
+  border-radius: 12px; padding: 1.1rem 1.25rem;
+  display: flex; gap: 14px; align-items: flex-start;
+  border: 1px solid;
+}
+.accion-card.c-roja   { background: rgba(239,68,68,0.08);   border-color: rgba(239,68,68,0.35); }
+.accion-card.c-inmed  { background: rgba(245,158,11,0.08);  border-color: rgba(245,158,11,0.35); }
+.accion-card.c-urgente{ background: rgba(59,130,246,0.08);  border-color: rgba(59,130,246,0.35); }
+.accion-card.c-prog   { background: rgba(34,197,94,0.08);   border-color: rgba(34,197,94,0.35); }
+.accion-card.c-nd     { background: var(--surface2);         border-color: var(--border); }
+.accion-icon { font-size: 1.8rem; flex-shrink: 0; margin-top: 2px; }
+.accion-card.c-roja .accion-icon    { color: var(--red); }
+.accion-card.c-inmed .accion-icon   { color: var(--amber); }
+.accion-card.c-urgente .accion-icon { color: var(--blue); }
+.accion-card.c-prog .accion-icon    { color: var(--green); }
+.accion-label {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 5px;
+}
+.accion-card.c-roja .accion-label    { color: #f87171; }
+.accion-card.c-inmed .accion-label   { color: #fbbf24; }
+.accion-card.c-urgente .accion-label { color: #60a5fa; }
+.accion-card.c-prog .accion-label    { color: #4ade80; }
+.accion-text { font-family: var(--font-head); font-size: 1rem; font-weight: 700; color: var(--text); line-height: 1.35; }
+
+/* ── CLIPS code block ─────────────────────────────────── */
+.code-block {
+  background: #0d1117; border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem; overflow-x: auto;
+}
+.code-block pre { font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.7; color: #c9d1d9; }
+.cm { color: #6e7681; }
+.ck { color: #79c0ff; }
+.cs { color: #a5d6ff; }
+.cv { color: #ffa657; }
+.cn { color: #3fb950; }
+
+/* ── Error box ────────────────────────────────────────── */
+.error-box {
+  display: none; background: var(--red-dim); border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 10px; padding: 12px 14px;
+  font-size: 0.82rem; color: #f87171; font-family: var(--font-mono);
+}
+.error-box.visible { display: block; }
+
+/* ── Reglas disparadas ────────────────────────────────── */
+.rules-fired { display: flex; gap: 6px; flex-wrap: wrap; }
+.rule-tag {
+  padding: 2px 8px; border-radius: 4px;
+  background: var(--blue-dim); border: 1px solid rgba(59,130,246,0.2);
+  font-family: var(--font-mono); font-size: 0.68rem; color: var(--blue);
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 780px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .fields-grid { grid-template-columns: 1fr; }
+  header { flex-direction: column; gap: 12px; }
+  .layers { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2C6 9 4 13 4 16a8 8 0 0 0 16 0c0-3-2-7-8-14z"/>
+          <path d="M12 22V12"/>
+          <path d="m9 15 3-3 3 3"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>Sistema Experto Hídrico</h1>
+        <p>CLIPS · Forward Chaining · 21 reglas</p>
+      </div>
+    </div>
+    <div class="header-badge">
+      <div class="pulse"></div>
+      Motor CLIPS activo
+    </div>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- ── PANEL IZQUIERDO: Formulario ── -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="ph-icon">⬡</span>
+          <h2>Hechos iniciales del sector</h2>
+        </div>
+        <div class="panel-body">
+          <div class="fields-grid">
+
+            <div class="field">
+              <label>Días sin agua</label>
+              <input type="number" id="dias_sin_agua" min="0" max="30" value="5">
+            </div>
+
+            <div class="field">
+              <label>Nivel reservorio</label>
+              <select id="nivel_reservorio">
+                <option value="Critico">Crítico</option>
+                <option value="Medio">Medio</option>
+                <option value="Alto">Alto</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Estado de la red</label>
+              <select id="estado_red">
+                <option value="Rota">Rota</option>
+                <option value="Falla_Parcial">Falla parcial</option>
+                <option value="Operativa">Operativa</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Zona</label>
+              <select id="zona">
+                <option value="Laderas_SJL">Laderas SJL</option>
+                <option value="Plana">Plana</option>
+                <option value="Otra">Otra</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Hospitales</label>
+              <select id="presencia_hospitales">
+                <option value="Si">Sí</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Clima</label>
+              <select id="clima">
+                <option value="Ola_de_Calor">Ola de calor</option>
+                <option value="Normal">Normal</option>
+                <option value="Lluvia">Lluvia</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Ruta PL calculada</label>
+              <select id="ruta_pl_calculada">
+                <option value="Verdadero">Verdadero</option>
+                <option value="Falso">Falso</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Cisternas disponibles</label>
+              <select id="cisternas_disponibles">
+                <option value="Disponibles">Disponibles</option>
+                <option value="Cero">Cero</option>
+              </select>
+            </div>
+
+          </div>
+
+          <button class="btn-run" id="btnRun" onclick="ejecutar()">
+            <span id="btnIcon">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <div class="spinner" id="spinner"></div>
+            <span id="btnLabel">Ejecutar motor de inferencia</span>
+          </button>
+
+          <div class="progress-wrap" id="progressWrap">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+
+          <div class="error-box" id="errorBox"></div>
+        </div>
+      </div>
+
+      <!-- Reglas CLIPS hint -->
+      <div style="margin-top:12px; padding:10px 14px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+        <div style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:6px;">Archivo de reglas</div>
+        <code style="font-family:var(--font-mono); font-size:0.75rem; color:#60a5fa;">reglas_hidricas.clp</code>
+        <span style="font-size:0.72rem; color:var(--muted); margin-left:8px;">21 defrule · 4 capas</span>
+      </div>
+    </div>
+
+    <!-- ── PANEL DERECHO: Resultados ── -->
+    <div style="display:flex; flex-direction:column; gap:14px;">
+
+      <!-- Placeholder -->
+      <div class="panel" id="placeholderPanel">
+        <div class="results-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4l3 3"/>
+          </svg>
+          <p>Configura los hechos del sector<br>y ejecuta el motor para ver los resultados.</p>
+        </div>
+      </div>
+
+      <!-- Resultados reales -->
+      <div id="resultsWrap" class="results-content">
+
+        <!-- Capas -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="ph-icon">◈</span>
+            <h2>Capas de inferencia</h2>
+          </div>
+          <div class="panel-body">
+            <div class="layers">
+              <div class="layer" id="l1">
+                <div class="layer-num">CAPA 1</div>
+                <div class="layer-name">Estrés hídrico</div>
+                <div class="layer-check">✓</div>
+              </div>
+              <div class="layer" id="l2">
+                <div class="layer-num">CAPA 2</div>
+                <div class="layer-name">Prioridad social</div>
+                <div class="layer-check">✓</div>
+              </div>
+              <div class="layer" id="l3">
+                <div class="layer-num">CAPA 3</div>
+                <div class="layer-name">Viabilidad</div>
+                <div class="layer-check">✓</div>
+              </div>
+              <div class="layer" id="l4">
+                <div class="layer-num">CAPA 4</div>
+                <div class="layer-name">Acción final</div>
+                <div class="layer-check">✓</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variables inferidas -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="ph-icon">≋</span>
+            <h2>Variables inferidas</h2>
+          </div>
+          <div class="panel-body">
+            <div class="inf-table" id="infTable"></div>
+          </div>
+        </div>
+
+        <!-- Acción final -->
+        <div id="accionWrap"></div>
+
+        <!-- CLIPS code -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="ph-icon">&lt;/&gt;</span>
+            <h2>Hecho CLIPS generado</h2>
+          </div>
+          <div class="panel-body">
+            <div class="code-block">
+              <pre id="clipsCode"></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const INFERIDOS = [
+  { key: "estres_hidrico",     label: "estres_hidrico" },
+  { key: "vulnerabilidad",     label: "vulnerabilidad" },
+  { key: "prioridad_atencion", label: "prioridad_atencion" },
+  { key: "viabilidad_tecnica", label: "viabilidad_tecnica" },
+  { key: "logistica",          label: "logistica" },
+];
+
+function badgeClass(val) {
+  if (!val || val === "--") return "b-default";
+  const v = val.toUpperCase().replace(/\s/g, "");
+  const m = {
+    "CRITICO":"b-critico","ALTO":"b-alto","BAJO":"b-bajo",
+    "EXTREMA":"b-extrema","ALTA":"b-alta","BAJA":"b-baja",
+    "INMEDIATA":"b-inmediata","URGENTE":"b-urgente","PROGRAMADA":"b-programada"
+  };
+  return m[v] || "b-default";
+}
+
+function accionClass(texto) {
+  if (!texto || texto === "--") return "c-nd";
+  if (texto.includes("ALERTA ROJA")) return "c-roja";
+  if (texto.includes("convoy") || texto.includes("Lineal urgente")) return "c-inmed";
+  if (texto.includes("presion") || texto.includes("60%")) return "c-urgente";
+  return "c-prog";
+}
+
+function accionIcon(texto) {
+  if (!texto || texto === "--") return "—";
+  if (texto.includes("ALERTA ROJA")) return "🚨";
+  if (texto.includes("convoy"))      return "🚛";
+  if (texto.includes("Lineal"))      return "📐";
+  if (texto.includes("presion"))     return "⏱";
+  return "✅";
+}
+
+function accionTitulo(texto) {
+  if (!texto || texto === "--") return "Sin acción";
+  if (texto.includes("ALERTA ROJA")) return "Alerta roja — INDECI";
+  if (texto.includes("convoy"))      return "Acción inmediata";
+  if (texto.includes("Lineal"))      return "Acción inmediata";
+  if (texto.includes("presion"))     return "Acción urgente";
+  return "Acción programada";
+}
+
+function buildClipsCode(facts, res) {
+  const e = (v) => `<span class='cs'>"${v}"</span>`;
+  const k = (v) => `<span class='ck'>${v}</span>`;
+  const c = (v) => `<span class='cm'>; ${v}</span>`;
+  return `${c('assert del hecho inicial')}
+(assert (sector
+  ${k('(dias_sin_agua')} <span class='cv'>${facts.dias_sin_agua}</span>${k(')')}
+  ${k('(nivel_reservorio')} ${e(facts.nivel_reservorio)}${k(')')}
+  ${k('(estado_red')} ${e(facts.estado_red)}${k(')')}
+  ${k('(zona')} ${e(facts.zona)}${k(')')}
+  ${k('(presencia_hospitales')} ${e(facts.presencia_hospitales)}${k(')')}
+  ${k('(clima')} ${e(facts.clima)}${k(')')}
+  ${k('(ruta_pl_calculada')} ${e(facts.ruta_pl_calculada)}${k(')')}
+  ${k('(cisternas_disponibles')} ${e(facts.cisternas_disponibles)}${k(')')}))\n
+${c('después de (run) — estado inferido:')}
+${c('estres_hidrico     → ' + (res.estres_hidrico || '--'))}
+${c('vulnerabilidad     → ' + (res.vulnerabilidad || '--'))}
+${c('prioridad_atencion → ' + (res.prioridad_atencion || '--'))}
+${c('viabilidad_tecnica → ' + (res.viabilidad_tecnica || '--'))}
+${c('logistica          → ' + (res.logistica || '--'))}
+${c('accion_final       → ' + (res.accion_final || '--'))}`;
+}
+
+function setProgress(pct) {
+  document.getElementById("progressFill").style.width = pct + "%";
+}
+
+async function ejecutar() {
+  const btn = document.getElementById("btnRun");
+  const spinner = document.getElementById("spinner");
+  const btnIcon = document.getElementById("btnIcon");
+  const btnLabel = document.getElementById("btnLabel");
+  const err = document.getElementById("errorBox");
+  const pw = document.getElementById("progressWrap");
+
+  btn.disabled = true;
+  spinner.style.display = "block";
+  btnIcon.style.display = "none";
+  btnLabel.textContent = "Ejecutando motor CLIPS...";
+  err.className = "error-box";
+  pw.className = "progress-wrap active";
+  setProgress(0);
+
+  const facts = {
+    dias_sin_agua:         parseInt(document.getElementById("dias_sin_agua").value) || 0,
+    nivel_reservorio:      document.getElementById("nivel_reservorio").value,
+    estado_red:            document.getElementById("estado_red").value,
+    zona:                  document.getElementById("zona").value,
+    presencia_hospitales:  document.getElementById("presencia_hospitales").value,
+    clima:                 document.getElementById("clima").value,
+    ruta_pl_calculada:     document.getElementById("ruta_pl_calculada").value,
+    cisternas_disponibles: document.getElementById("cisternas_disponibles").value,
+  };
+
+  setTimeout(() => setProgress(40), 150);
+
+  try {
+    const resp = await fetch("/inferir", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(facts)
+    });
+
+    setProgress(80);
+    const data = await resp.json();
+
+    if (!data.ok) throw new Error(data.error || "Error del servidor");
+
+    setProgress(100);
+    setTimeout(() => { pw.className = "progress-wrap"; }, 500);
+
+    renderResultados(facts, data.resultado);
+
+  } catch(e) {
+    pw.className = "progress-wrap";
+    err.textContent = "Error: " + e.message;
+    err.className = "error-box visible";
+  }
+
+  btn.disabled = false;
+  spinner.style.display = "none";
+  btnIcon.style.display = "flex";
+  btnLabel.textContent = "Ejecutar motor de inferencia";
+}
+
+function renderResultados(facts, res) {
+  ["l1","l2","l3","l4"].forEach(id => document.getElementById(id).classList.add("done"));
+
+  // Variables inferidas
+  const table = document.getElementById("infTable");
+  table.innerHTML = INFERIDOS.map(i => {
+    const val = res[i.key] || "--";
+    return `<div class="inf-row">
+      <div class="inf-key">${i.label}</div>
+      <div class="inf-val"><span class="badge ${badgeClass(val)}">${val}</span></div>
+    </div>`;
+  }).join("");
+
+  // Acción final
+  const accion = res.accion_final || "--";
+  const cls = accionClass(accion);
+  document.getElementById("accionWrap").innerHTML = `
+    <div class="accion-card ${cls}">
+      <div class="accion-icon">${accionIcon(accion)}</div>
+      <div>
+        <div class="accion-label">${accionTitulo(accion)}</div>
+        <div class="accion-text">${accion}</div>
+      </div>
+    </div>`;
+
+  // CLIPS code
+  document.getElementById("clipsCode").innerHTML = buildClipsCode(facts, res);
+
+  // Mostrar resultados
+  document.getElementById("placeholderPanel").style.display = "none";
+  document.getElementById("resultsWrap").className = "results-content visible";
+}
+</script>
+</body>
+</html>
